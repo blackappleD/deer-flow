@@ -6,7 +6,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langgraph.runtime import Runtime
 
 from deerflow.agents.thread_state import SandboxState, ThreadDataState
-from deerflow.config.deer_flow_context import DeerFlowContext, resolve_context
+from deerflow.config.deer_flow_context import DeerFlowContext
 from deerflow.sandbox import get_sandbox_provider
 
 logger = logging.getLogger(__name__)
@@ -57,8 +57,7 @@ class SandboxMiddleware(AgentMiddleware[SandboxMiddlewareState]):
 
         # Eager initialization (original behavior)
         if "sandbox" not in state or state["sandbox"] is None:
-            ctx = resolve_context(runtime)
-            thread_id = ctx.thread_id
+            thread_id = runtime.context.thread_id
             if not thread_id:
                 return super().before_agent(state, runtime)
             sandbox_id = self._acquire_sandbox(thread_id)

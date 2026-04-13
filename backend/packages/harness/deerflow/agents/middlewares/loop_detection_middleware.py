@@ -24,7 +24,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
-from deerflow.config.deer_flow_context import DeerFlowContext, resolve_context
+from deerflow.config.deer_flow_context import DeerFlowContext
 
 logger = logging.getLogger(__name__)
 
@@ -184,8 +184,7 @@ class LoopDetectionMiddleware(AgentMiddleware[AgentState]):
 
     def _get_thread_id(self, runtime: Runtime[DeerFlowContext]) -> str:
         """Extract thread_id from runtime context for per-thread tracking."""
-        ctx = resolve_context(runtime)
-        return ctx.thread_id or "default"
+        return runtime.context.thread_id or "default"
 
     def _evict_if_needed(self) -> None:
         """Evict least recently used threads if over the limit.

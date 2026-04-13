@@ -9,7 +9,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
-from deerflow.config.deer_flow_context import DeerFlowContext, resolve_context
+from deerflow.config.deer_flow_context import DeerFlowContext
 from deerflow.config.paths import Paths, get_paths
 from deerflow.utils.file_conversion import extract_outline
 
@@ -214,8 +214,7 @@ class UploadsMiddleware(AgentMiddleware[UploadsMiddlewareState]):
             return None
 
         # Resolve uploads directory for existence checks
-        ctx = resolve_context(runtime)
-        thread_id = ctx.thread_id
+        thread_id = runtime.context.thread_id
         uploads_dir = self._paths.sandbox_uploads_dir(thread_id) if thread_id else None
 
         # Get newly uploaded files from the current message's additional_kwargs.files

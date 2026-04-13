@@ -12,7 +12,6 @@ from langgraph.typing import ContextT
 
 from deerflow.agents.lead_agent.prompt import get_skills_prompt_section
 from deerflow.agents.thread_state import ThreadState
-from deerflow.config.deer_flow_context import resolve_context
 from deerflow.sandbox.security import LOCAL_BASH_SUBAGENT_DISABLED_MESSAGE, is_host_bash_allowed
 from deerflow.subagents import SubagentExecutor, get_available_subagent_names, get_subagent_config
 from deerflow.subagents.executor import SubagentStatus, cleanup_background_task, get_background_task_result, request_cancel_background_task
@@ -93,8 +92,7 @@ async def task_tool(
     if runtime is not None:
         sandbox_state = runtime.state.get("sandbox")
         thread_data = runtime.state.get("thread_data")
-        ctx = resolve_context(runtime)
-        thread_id = ctx.thread_id
+        thread_id = runtime.context.thread_id
 
         # Try to get parent model from configurable
         metadata = runtime.config.get("metadata", {})

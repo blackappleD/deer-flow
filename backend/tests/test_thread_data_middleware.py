@@ -1,5 +1,3 @@
-from unittest.mock import patch
-
 import pytest
 
 from deerflow.agents.middlewares.thread_data_middleware import ThreadDataMiddleware
@@ -31,40 +29,27 @@ class TestThreadDataMiddleware:
         assert _as_posix(result["thread_data"]["uploads_path"]).endswith("threads/thread-123/user-data/uploads")
         assert _as_posix(result["thread_data"]["outputs_path"]).endswith("threads/thread-123/user-data/outputs")
 
-    def test_before_agent_uses_thread_id_from_configurable_when_context_is_none(self, tmp_path):
+    def test_before_agent_uses_thread_id_from_context(self, tmp_path):
         middleware = ThreadDataMiddleware(base_dir=str(tmp_path), lazy_init=True)
         from langgraph.runtime import Runtime
 
-        runtime = Runtime(context=None)
-        config = AppConfig(sandbox=SandboxConfig(use="test"))
-        with (
-            patch("deerflow.config.get_app_config", return_value=config),
-            patch("langgraph.config.get_config", return_value={"configurable": {"thread_id": "thread-from-config"}}),
-        ):
-            result = middleware.before_agent(state={}, runtime=runtime)
+        result = middleware.before_agent(state={}, runtime=Runtime(context=_make_context("thread-from-config")))
 
         assert result is not None
         assert _as_posix(result["thread_data"]["workspace_path"]).endswith("threads/thread-from-config/user-data/workspace")
 
-    def test_before_agent_uses_thread_id_from_dict_context(self, tmp_path):
+    def test_before_agent_uses_thread_id_from_typed_context(self, tmp_path):
         middleware = ThreadDataMiddleware(base_dir=str(tmp_path), lazy_init=True)
         from langgraph.runtime import Runtime
 
-        config = AppConfig(sandbox=SandboxConfig(use="test"))
-        with patch("deerflow.config.get_app_config", return_value=config):
-            result = middleware.before_agent(state={}, runtime=Runtime(context={"thread_id": "thread-from-dict"}))
+        result = middleware.before_agent(state={}, runtime=Runtime(context=_make_context("thread-from-dict")))
 
         assert result is not None
         assert _as_posix(result["thread_data"]["uploads_path"]).endswith("threads/thread-from-dict/user-data/uploads")
 
-    def test_before_agent_raises_clear_error_when_thread_id_missing_everywhere(self, tmp_path):
+    def test_before_agent_raises_clear_error_when_thread_id_missing(self, tmp_path):
         middleware = ThreadDataMiddleware(base_dir=str(tmp_path), lazy_init=True)
         from langgraph.runtime import Runtime
 
-        config = AppConfig(sandbox=SandboxConfig(use="test"))
-        with (
-            patch("deerflow.config.get_app_config", return_value=config),
-            patch("langgraph.config.get_config", return_value={"configurable": {}}),
-        ):
-            with pytest.raises(ValueError, match="Thread ID is required"):
-                middleware.before_agent(state={}, runtime=Runtime(context=None))
+        with pytest.raises(ValueError, match="Thread ID is required"):
+            middleware.before_agent(state={}, runtime=Runtime(context=_make_context("")))

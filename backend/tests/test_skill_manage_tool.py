@@ -4,7 +4,18 @@ from types import SimpleNamespace
 import anyio
 import pytest
 
+from deerflow.config.app_config import AppConfig
+from deerflow.config.deer_flow_context import DeerFlowContext
+from deerflow.config.sandbox_config import SandboxConfig
+
 skill_manage_module = importlib.import_module("deerflow.tools.skill_manage_tool")
+
+
+def _make_context(thread_id: str) -> DeerFlowContext:
+    return DeerFlowContext(
+        app_config=AppConfig(sandbox=SandboxConfig(use="test")),
+        thread_id=thread_id,
+    )
 
 
 def _skill_content(name: str, description: str = "Demo skill") -> str:
@@ -34,7 +45,7 @@ def test_skill_manage_create_and_patch(monkeypatch, tmp_path):
     monkeypatch.setattr(skill_manage_module, "refresh_skills_system_prompt_cache_async", _refresh)
     monkeypatch.setattr(skill_manage_module, "scan_skill_content", lambda *args, **kwargs: _async_result("allow", "ok"))
 
-    runtime = SimpleNamespace(context={"thread_id": "thread-1"}, config={"configurable": {"thread_id": "thread-1"}})
+    runtime = SimpleNamespace(context=_make_context("thread-1"), config={"configurable": {"thread_id": "thread-1"}})
 
     result = anyio.run(
         skill_manage_module.skill_manage_tool.coroutine,
@@ -77,7 +88,7 @@ def test_skill_manage_patch_replaces_single_occurrence_by_default(monkeypatch, t
     monkeypatch.setattr(skill_manage_module, "refresh_skills_system_prompt_cache_async", _refresh)
     monkeypatch.setattr(skill_manage_module, "scan_skill_content", lambda *args, **kwargs: _async_result("allow", "ok"))
 
-    runtime = SimpleNamespace(context={"thread_id": "thread-1"}, config={"configurable": {"thread_id": "thread-1"}})
+    runtime = SimpleNamespace(context=_make_context("thread-1"), config={"configurable": {"thread_id": "thread-1"}})
     content = _skill_content("demo-skill", "Demo skill") + "\nRepeated: Demo skill\n"
 
     anyio.run(skill_manage_module.skill_manage_tool.coroutine, runtime, "create", "demo-skill", content)
@@ -110,7 +121,7 @@ def test_skill_manage_rejects_public_skill_patch(monkeypatch, tmp_path):
     monkeypatch.setattr("deerflow.config.get_app_config", lambda: config)
     monkeypatch.setattr("deerflow.skills.manager.get_app_config", lambda: config)
 
-    runtime = SimpleNamespace(context={}, config={"configurable": {}})
+    runtime = SimpleNamespace(context=_make_context(""), config={"configurable": {}})
 
     with pytest.raises(ValueError, match="built-in skill"):
         anyio.run(
@@ -141,7 +152,7 @@ def test_skill_manage_sync_wrapper_supported(monkeypatch, tmp_path):
     monkeypatch.setattr(skill_manage_module, "refresh_skills_system_prompt_cache_async", _refresh)
     monkeypatch.setattr(skill_manage_module, "scan_skill_content", lambda *args, **kwargs: _async_result("allow", "ok"))
 
-    runtime = SimpleNamespace(context={"thread_id": "thread-sync"}, config={"configurable": {"thread_id": "thread-sync"}})
+    runtime = SimpleNamespace(context=_make_context("thread-sync"), config={"configurable": {"thread_id": "thread-sync"}})
     result = skill_manage_module.skill_manage_tool.func(
         runtime=runtime,
         action="create",
@@ -169,7 +180,7 @@ def test_skill_manage_rejects_support_path_traversal(monkeypatch, tmp_path):
     monkeypatch.setattr(skill_manage_module, "refresh_skills_system_prompt_cache_async", _refresh)
     monkeypatch.setattr(skill_manage_module, "scan_skill_content", lambda *args, **kwargs: _async_result("allow", "ok"))
 
-    runtime = SimpleNamespace(context={"thread_id": "thread-1"}, config={"configurable": {"thread_id": "thread-1"}})
+    runtime = SimpleNamespace(context=_make_context("thread-1"), config={"configurable": {"thread_id": "thread-1"}})
     anyio.run(skill_manage_module.skill_manage_tool.coroutine, runtime, "create", "demo-skill", _skill_content("demo-skill"))
 
     with pytest.raises(ValueError, match="parent-directory traversal|selected support directory"):
