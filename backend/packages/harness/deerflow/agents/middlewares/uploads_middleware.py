@@ -9,7 +9,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langchain_core.messages import HumanMessage
 from langgraph.runtime import Runtime
 
-from deerflow.config.deer_flow_context import resolve_context
+from deerflow.config.deer_flow_context import DeerFlowContext, resolve_context
 from deerflow.config.paths import Paths, get_paths
 from deerflow.utils.file_conversion import extract_outline
 
@@ -185,7 +185,7 @@ class UploadsMiddleware(AgentMiddleware[UploadsMiddlewareState]):
         return files if files else None
 
     @override
-    def before_agent(self, state: UploadsMiddlewareState, runtime: Runtime) -> dict | None:
+    def before_agent(self, state: UploadsMiddlewareState, runtime: Runtime[DeerFlowContext]) -> dict | None:
         """Inject uploaded files information before agent execution.
 
         New files come from the current message's additional_kwargs.files.

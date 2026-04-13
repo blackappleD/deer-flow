@@ -6,7 +6,7 @@ from langchain.agents.middleware import AgentMiddleware
 from langgraph.runtime import Runtime
 
 from deerflow.agents.thread_state import ThreadDataState
-from deerflow.config.deer_flow_context import resolve_context
+from deerflow.config.deer_flow_context import DeerFlowContext, resolve_context
 from deerflow.config.paths import Paths, get_paths
 
 logger = logging.getLogger(__name__)
@@ -74,7 +74,7 @@ class ThreadDataMiddleware(AgentMiddleware[ThreadDataMiddlewareState]):
         return self._get_thread_paths(thread_id)
 
     @override
-    def before_agent(self, state: ThreadDataMiddlewareState, runtime: Runtime) -> dict | None:
+    def before_agent(self, state: ThreadDataMiddlewareState, runtime: Runtime[DeerFlowContext]) -> dict | None:
         ctx = resolve_context(runtime)
         thread_id = ctx.thread_id
 
