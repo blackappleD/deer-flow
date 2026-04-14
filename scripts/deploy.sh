@@ -59,6 +59,14 @@ cd "$REPO_ROOT"
 DOCKER_DIR="$REPO_ROOT/docker"
 COMPOSE_CMD=(docker compose -p deer-flow -f "$DOCKER_DIR/docker-compose.yaml")
 
+# ── Load .env ────────────────────────────────────────────────────────────────
+
+if [ -f "$REPO_ROOT/.env" ]; then
+    set -a
+    source "$REPO_ROOT/.env"
+    set +a
+fi
+
 # ── Colors ────────────────────────────────────────────────────────────────────
 
 GREEN='\033[0;32m'
