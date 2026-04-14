@@ -1,16 +1,60 @@
-# 官方加载自定义 Agent（目录形式）
-from deerflow.agent.factory import create_agent_from_dir
+"""Register the custom STVB stage agents."""
 
-# 加载你自己生成的 4 个 Agent（目录路径）
-s_agent = create_agent_from_dir("./agent/my_s_agent")
-t_agent = create_agent_from_dir("./agent/my_t_agent")
-v_agent = create_agent_from_dir("./agent/my_v_agent")
-b_agent = create_agent_from_dir("./agent/my_b_agent")
+from __future__ import annotations
 
-# 注册到注册表
-from agent.agent_registry import register_agent
+from registry.agent_registry import FunctionAgent, register_agent
 
-register_agent("s_agent", s_agent)
-register_agent("t_agent", t_agent)
-register_agent("v_agent", v_agent)
-register_agent("b_agent", b_agent)
+
+def _run_s(state: dict) -> dict:
+    query = state.get("query") or ""
+    return {
+        "stage": "S",
+        "summary": f"Structured query: {query}".strip(),
+        "query": query,
+        "data": state.get("data", {}),
+    }
+
+
+def _run_t(state: dict) -> dict:
+    previous = state.get("result", {})
+    return {
+        "stage": "T",
+        "tasks": [
+            "analyze user query",
+            "validate intermediate result",
+            "build final response",
+        ],
+        "previous": previous,
+    }
+
+
+def _run_v(state: dict) -> dict:
+    query = (state.get("query") or "").strip()
+    previous = state.get("result", {})
+    passed = bool(query)
+    return {
+        "stage": "V",
+        "pass": passed,
+        "reason": "query is present" if passed else "query is empty",
+        "previous": previous,
+    }
+
+
+def _run_b(state: dict) -> dict:
+    query = state.get("query") or ""
+    previous = state.get("result", {})
+    return {
+        "stage": "B",
+        "final": {
+            "message": f"STVB workflow completed for query: {query}".strip(),
+            "query": query,
+            "validation": previous,
+            "data": state.get("data", {}),
+        },
+    }
+
+
+register_agent("s_agent", FunctionAgent(_run_s))
+register_agent("t_agent", FunctionAgent(_run_t))
+register_agent("v_agent", FunctionAgent(_run_v))
+register_agent("b_agent", FunctionAgent(_run_b))
