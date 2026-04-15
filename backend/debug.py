@@ -1,61 +1,24 @@
 #!/usr/bin/env python
-"""
-Debug script for lead_agent.
-Run this file directly in VS Code with breakpoints.
+"""Debug entrypoint for the local yuanfa workflow."""
 
-Requirements:
-    Run with `uv run` from the backend/ directory so that the uv workspace
-    resolves deerflow-harness and app packages correctly:
+from __future__ import annotations
 
-        cd backend && PYTHONPATH=. uv run python debug.py
+import json
+import sys
+from pathlib import Path
 
-Usage:
-    1. Set breakpoints in agent.py or other files
-    2. Press F5 or use "Run and Debug" panel
-    3. Input messages in the terminal to interact with the agent
-"""
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-import asyncio
-import logging
-
-from dotenv import load_dotenv
-from langchain_core.messages import HumanMessage
-
-from deerflow.agents import make_lead_agent
-
-load_dotenv()
-
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
+from workflow.lead_agent import lead_agent
 
 
-async def main():
-    # Initialize MCP tools at startup
-    try:
-        from deerflow.mcp import initialize_mcp_tools
-
-        await initialize_mcp_tools()
-    except Exception as e:
-        print(f"Warning: Failed to initialize MCP tools: {e}")
-
-    # Create agent with default config
-    config = {
-        "configurable": {
-            "thread_id": "debug-thread-001",
-            "thinking_enabled": True,
-            "is_plan_mode": True,
-            # Uncomment to use a specific model
-            "model_name": "kimi-k2.5",
-        }
-    }
-
-    agent = make_lead_agent(config)
-
+def main() -> None:
     print("=" * 50)
-    print("Lead Agent Debug Mode")
+    print("Yuanfa Workflow Debug Mode")
+    print("Input plain text for a normal case")
+    print("Use '/critical' prefix to simulate emergency major case")
     print("Type 'quit' or 'exit' to stop")
     print("=" * 50)
 
@@ -64,28 +27,38 @@ async def main():
             user_input = input("\nYou: ").strip()
             if not user_input:
                 continue
-            if user_input.lower() in ("quit", "exit"):
+            if user_input.lower() in {"quit", "exit"}:
                 print("Goodbye!")
                 break
 
-            # Invoke the agent
-            state = {"messages": [HumanMessage(content=user_input)]}
-            result = await agent.ainvoke(state, config=config, context={"thread_id": "debug-thread-001"})
+            payload = {
+                "query": user_input,
+                "summary": user_input,
+                "title": "Interactive yuanfa case",
+                "case_id": "case-debug-001",
+                "requested_by": "AION",
+                "severity": "medium",
+                "emergency": False,
+                "major": False,
+            }
+            if user_input.startswith("/critical"):
+                payload.update(
+                    {
+                        "query": user_input.removeprefix("/critical").strip() or "critical incident",
+                        "summary": user_input.removeprefix("/critical").strip() or "critical incident",
+                        "severity": "critical",
+                        "emergency": True,
+                        "major": True,
+                    }
+                )
 
-            # Print the response
-            if result.get("messages"):
-                last_message = result["messages"][-1]
-                print(f"\nAgent: {last_message.content}")
-
+            result = lead_agent["invoke"](payload)
+            print("\nAgent:")
+            print(json.dumps(result, ensure_ascii=False, indent=2))
         except KeyboardInterrupt:
             print("\nInterrupted. Goodbye!")
             break
-        except Exception as e:
-            print(f"\nError: {e}")
-            import traceback
-
-            traceback.print_exc()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()

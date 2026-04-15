@@ -1,60 +1,75 @@
-"""Register the custom STVB stage agents."""
+"""Register AION/AEGIS/ARBI/M agents for yuanfa orchestration."""
 
 from __future__ import annotations
 
 from registry.agent_registry import FunctionAgent, register_agent
 
 
-def _run_s(state: dict) -> dict:
-    query = state.get("query") or ""
+def _run_aion(state: dict) -> dict:
+    severity = state.get("severity", "medium")
+    case_id = state.get("case_id", "unknown-case")
+    warning_level = {
+        "low": "observe",
+        "medium": "review",
+        "high": "alert",
+        "critical": "red-alert",
+    }.get(severity, "review")
     return {
-        "stage": "S",
-        "summary": f"Structured query: {query}".strip(),
-        "query": query,
-        "data": state.get("data", {}),
+        "agent": "AION",
+        "role_name": "灵哨",
+        "stage": "AION_WARNING",
+        "warning_level": warning_level,
+        "risk_summary": f"AION detected {severity} risk for case {case_id}",
+        "recommendation": "dispatch AEGIS for evidence collection",
     }
 
 
-def _run_t(state: dict) -> dict:
-    previous = state.get("result", {})
+def _run_aegis(state: dict) -> dict:
+    severity = state.get("severity", "medium")
+    evidence_items = ["alert-trace", "event-log", "risk-snapshot"]
+    if severity in {"high", "critical"}:
+        evidence_items.append("forensics-package")
     return {
-        "stage": "T",
-        "tasks": [
-            "analyze user query",
-            "validate intermediate result",
-            "build final response",
-        ],
-        "previous": previous,
+        "agent": "AEGIS",
+        "role_name": "灵盾",
+        "stage": "AEGIS_INVESTIGATION",
+        "evidence_stage": "EVIDENCE_COLLECTION",
+        "evidence_items": evidence_items,
+        "finding": f"AEGIS collected {len(evidence_items)} evidence artifacts",
     }
 
 
-def _run_v(state: dict) -> dict:
-    query = (state.get("query") or "").strip()
-    previous = state.get("result", {})
-    passed = bool(query)
+def _run_arbi(state: dict) -> dict:
+    severity = state.get("severity", "medium")
+    outcome = "approve_remediation"
+    if severity == "critical":
+        outcome = "freeze_and_execute_emergency_plan"
+    elif severity == "high":
+        outcome = "temporary_restriction_and_remediation"
+
+    requires_m_review = bool(state.get("emergency")) and bool(state.get("major"))
     return {
-        "stage": "V",
-        "pass": passed,
-        "reason": "query is present" if passed else "query is empty",
-        "previous": previous,
+        "agent": "ARBI",
+        "role_name": "灵治",
+        "stage": "ARBI_ARBITRATION",
+        "outcome": outcome,
+        "reasoning": "ARBI completed arbitration based on AION warning and AEGIS evidence",
+        "requires_m_review": requires_m_review,
     }
 
 
-def _run_b(state: dict) -> dict:
-    query = state.get("query") or ""
-    previous = state.get("result", {})
+def _run_m(state: dict) -> dict:
+    arbi_result = state.get("arbi_result", {})
     return {
-        "stage": "B",
-        "final": {
-            "message": f"STVB workflow completed for query: {query}".strip(),
-            "query": query,
-            "validation": previous,
-            "data": state.get("data", {}),
-        },
+        "decision_maker": "M",
+        "mode": "centralized",
+        "decision": "activate_emergency_command",
+        "source": "M_EXECUTION",
+        "based_on": arbi_result.get("outcome", "arbitration_result"),
     }
 
 
-register_agent("s_agent", FunctionAgent(_run_s))
-register_agent("t_agent", FunctionAgent(_run_t))
-register_agent("v_agent", FunctionAgent(_run_v))
-register_agent("b_agent", FunctionAgent(_run_b))
+register_agent("aion_agent", FunctionAgent(_run_aion))
+register_agent("aegis_agent", FunctionAgent(_run_aegis))
+register_agent("arbi_agent", FunctionAgent(_run_arbi))
+register_agent("m_agent", FunctionAgent(_run_m))
